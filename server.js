@@ -1,9 +1,9 @@
 require('dotenv').config();
-const express=require('express'),helmet=require('helmet'),cors=require('cors'),rate=require('express-rate-limit'),bcrypt=require('bcryptjs'),jwt=require('jsonwebtoken'),{createClient}=require('@supabase/supabase-js');
+const path=require('path'),express=require('express'),helmet=require('helmet'),cors=require('cors'),rate=require('express-rate-limit'),bcrypt=require('bcryptjs'),jwt=require('jsonwebtoken'),{createClient}=require('@supabase/supabase-js');
 const {SUPABASE_URL,SUPABASE_SERVICE_KEY,JWT_SECRET,PORT=3000,CORS_ORIGIN}=process.env;
 if(!SUPABASE_URL||!SUPABASE_SERVICE_KEY||!JWT_SECRET||JWT_SECRET.length<32){console.error('Set SUPABASE_URL, SUPABASE_SERVICE_KEY and a JWT_SECRET of 32+ characters in .env');process.exit(1)}
 const db=createClient(SUPABASE_URL,SUPABASE_SERVICE_KEY,{auth:{persistSession:false}});
-const app=express();app.use(helmet({contentSecurityPolicy:false}),cors({origin:CORS_ORIGIN||false}),express.json({limit:'100kb'}),express.static('public'));
+const app=express();app.use(helmet({contentSecurityPolicy:false}),cors({origin:CORS_ORIGIN||false}),express.json({limit:'100kb'}),express.static(path.join(__dirname,'public')));
 const ok=async p=>{const{data,error}=await p;if(error)throw Object.assign(new Error({'23P01':'That table is already booked for this time','23503':'This record is used by other records','23505':'A record with this value already exists'}[error.code]||error.message),{status:400});return data};
 const ah=f=>(q,s,n)=>f(q,s,n).catch(n);
 const auth=(q,s,n)=>{try{q.user=jwt.verify((q.headers.authorization||'').slice(7),JWT_SECRET);n()}catch{s.status(401).json({error:'Please sign in again'})}};
@@ -95,4 +95,5 @@ api.delete('/:res/:id',(q,s,n)=>res(q,s,n,1),ah(async(q,s)=>{await ok(db.from(q.
 app.use('/api',api);
 app.use('/api',(q,s)=>s.status(404).json({error:'Not found'}));
 app.use((e,q,s,n)=>{if(e==='route')return s.status(404).json({error:'Not found'});s.status(e.status||500).json({error:e.status?e.message:'Server error'});if(!e.status)console.error(e)});
-app.listen(PORT,()=>console.log('Restaurant system on http://localhost:'+PORT));
+if(require.main===module)app.listen(PORT,()=>console.log('Restaurant system on http://localhost:'+PORT));
+module.exports=app;
